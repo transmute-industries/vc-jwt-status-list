@@ -32,8 +32,10 @@ const status = require('@transmute/vc-jwt-status-list');
 
 ```ts
 import moment from 'moment'
-import {StatusList, SignParameters} from '@transmute/vc-jwt-status-list'
-export const signer = {
+import * as jose from 'jose'
+import { StatusList, SignParameters } from '@transmute/vc-jwt-status-list'
+
+const signer = {
   sign: async ({ header, claimset }: SignParameters) => {
     const jwt = await new jose.CompactSign(
       Buffer.from(JSON.stringify(claimset)),
@@ -43,16 +45,17 @@ export const signer = {
     return jwt
   },
 }
+
 const statusList = await StatusList.create({
-    id: 'https://vendor.example/credentials/status/3',
-    alg: 'ES256',
-    iss: 'did:example:123',
-    kid: '#0',
-    iat: moment('2021-04-05T14:27:40Z').unix(),
-    length: 8,
-    purpose: 'suspension',
-    signer,
-  })
+  id: 'https://vendor.example/credentials/status/3',
+  alg: 'ES256',
+  iss: 'did:example:123',
+  kid: '#0',
+  iat: moment('2021-04-05T14:27:40Z').unix(),
+  length: 8,
+  purpose: 'suspension',
+  signer,
+})
 ```
 
 
@@ -60,17 +63,8 @@ const statusList = await StatusList.create({
 
 ```ts
 import moment from 'moment'
-import {StatusList, SignParameters} from '@transmute/vc-jwt-status-list'
-export const signer = {
-  sign: async ({ header, claimset }: SignParameters) => {
-    const jwt = await new jose.CompactSign(
-      Buffer.from(JSON.stringify(claimset)),
-    )
-      .setProtectedHeader(header)
-      .sign(await jose.importJWK(privateKeyJwk))
-    return jwt
-  },
-}
+import { VerifiableCredential } from '@transmute/vc-jwt-status-list'
+
 const verifiableCredential = await VerifiableCredential.create({
     header: {
       alg: 'ES256',
@@ -111,6 +105,8 @@ const verifiableCredential = await VerifiableCredential.create({
 ### Verifying & Suspending a Verifiable Credential With Status
 
 ```ts
+import { VerifiableCredential } from '@transmute/vc-jwt-status-list'
+
 const resolver = {
   resolve: async (id: string) => {
     if (id === 'https://example.com/credentials/status/3') {

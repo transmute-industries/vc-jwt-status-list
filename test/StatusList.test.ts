@@ -27,7 +27,7 @@ it('create', async () => {
     },
     payload: {
       '@context': [
-        'https://www.w3.org/2018/credentials/v1',
+        'https://www.w3.org/ns/credentials/v2',
         'https://w3id.org/vc/status-list/2021/v1',
       ],
       id: 'https://vendor.example/credentials/status/3',
@@ -77,7 +77,7 @@ it('updateStatus', async () => {
     },
     payload: {
       '@context': [
-        'https://www.w3.org/2018/credentials/v1',
+        'https://www.w3.org/ns/credentials/v2',
         'https://w3id.org/vc/status-list/2021/v1',
       ],
       id: 'https://vendor.example/credentials/status/3',
