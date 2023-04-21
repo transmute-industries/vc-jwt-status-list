@@ -1,91 +1,16 @@
 import * as jose from 'jose'
 import moment from 'moment'
 import { Bitstring } from './Bitstring'
-
-export type StatusPurpose = 'revocation' | 'suspension' | string
-
-export type StatusList2021 = {
-  id: string
-  type: 'StatusList2021'
-  statusPurpose: StatusPurpose
-  encodedList: string
-}
-
-export type StatusList2021CredentialHeader = {
-  alg: 'ES256' | string
-  iss: string
-  kid: string
-  typ: 'vc+ld+jwt'
-  cty: 'vc+ld+json'
-}
-
-export type StatusList2021Credential = {
-  '@context': [
-    'https://www.w3.org/2018/credentials/v1',
-    'https://w3id.org/vc/status-list/2021/v1',
-  ]
-  id: string
-  type: ['VerifiableCredential', 'StatusList2021Credential']
-  issuer: string
-  issued: string
-  credentialSubject: StatusList2021
-}
-
-export type CheckStatusList = {
-  id: string
-  purpose: StatusPurpose
-  position: number
-  resolver: {
-    resolve: (id: string) => Promise<string>
-  }
-  verifier: {
-    verify: (params: StatusListVerifyParameters) => Promise<VerifiedJwt>
-  }
-}
-
-export type StatusListSignParameters = {
-  header: StatusList2021CredentialHeader
-  payload: StatusList2021Credential
-}
-
-export type CreateStatusList = {
-  id: string
-  alg: 'ES256' | string
-  iss: string
-  kid: string
-  iat: number
-  length: number
-  purpose: string
-  signer: {
-    sign: (params: StatusListSignParameters) => Promise<string>
-  }
-}
-
-export type StatusListVerifyParameters = {
-  jwt: string
-}
-
-export type VerifiedJwt = {
-  protectedHeader: StatusList2021CredentialHeader
-  payload: StatusList2021Credential
-}
-
-export type VerifyStatusList = {
-  jwt: string
-  verifier: {
-    verify: (params: StatusListVerifyParameters) => Promise<VerifiedJwt>
-  }
-}
-
-export type UpdateStatusList = {
-  jwt: string
-  purpose: StatusPurpose
-  position: number
-  status: boolean
-  signer: {
-    sign: (params: StatusListSignParameters) => Promise<string>
-  }
-}
+import {
+  CreateStatusList,
+  VerifyStatusList,
+  UpdateStatusList,
+  StatusList2021Credential,
+  StatusList2021CredentialHeader,
+  CheckStatusList,
+  JsonWebTokenStatusListVerifiableCredential,
+  VerifiedJsonWebToken,
+} from './types'
 
 const statusListCredentialTemplate = {
   '@context': [
@@ -95,7 +20,7 @@ const statusListCredentialTemplate = {
   id: 'https://example.com/credentials/status/3',
   type: ['VerifiableCredential', 'StatusList2021Credential'],
   issuer: 'did:example:12345',
-  issued: '2021-04-05T14:27:40Z',
+  validFrom: '2021-04-05T14:27:40Z',
   credentialSubject: {
     id: 'https://example.com/status/3#list',
     type: 'StatusList2021',
@@ -115,10 +40,10 @@ export class StatusList {
     length,
     purpose,
     signer,
-  }: CreateStatusList) => {
+  }: CreateStatusList): Promise<JsonWebTokenStatusListVerifiableCredential> => {
     const template = JSON.parse(JSON.stringify(statusListCredentialTemplate))
     template.id = id
-    template.issued = moment.unix(iat).toISOString()
+    template.validFrom = moment.unix(iat).toISOString()
     template.issuer = iss
     template.credentialSubject.id = id + '#list'
     template.credentialSubject.statusPurpose = purpose
@@ -133,12 +58,15 @@ export class StatusList {
         typ: 'vc+ld+jwt',
         cty: 'vc+ld+json',
       },
-      payload: template,
+      claimset: template,
     })
     return jwt
   }
 
-  static verify = async ({ jwt, verifier }: VerifyStatusList) => {
+  static verify = async ({
+    jwt,
+    verifier,
+  }: VerifyStatusList): Promise<VerifiedJsonWebToken> => {
     const { protectedHeader, payload } = await verifier.verify({
       jwt,
     })
@@ -151,7 +79,7 @@ export class StatusList {
     purpose,
     status,
     signer,
-  }: UpdateStatusList) => {
+  }: UpdateStatusList): Promise<JsonWebTokenStatusListVerifiableCredential> => {
     const claimset = await jose.decodeJwt(jwt)
     if (!claimset.credentialSubject) {
       throw new Error('JWT claimset is not StatusList2021Credential')
@@ -170,7 +98,7 @@ export class StatusList {
     statuListCredential.credentialSubject.encodedList = await bs.encodeBits()
     return await signer.sign({
       header: header as StatusList2021CredentialHeader,
-      payload: statuListCredential,
+      claimset: statuListCredential,
     })
   }
 
@@ -180,7 +108,7 @@ export class StatusList {
     position,
     resolver,
     verifier,
-  }: CheckStatusList) => {
+  }: CheckStatusList): Promise<boolean> => {
     const jwt = await resolver.resolve(id)
     const { payload } = await verifier.verify({
       jwt,
