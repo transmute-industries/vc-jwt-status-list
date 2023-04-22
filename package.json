@@ -1,6 +1,6 @@
 {
   "name": "@transmute/vc-jwt-status-list",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An implementation of https://w3c.github.io/vc-status-list-2021",
   "main": "./dist/index.js",
   "typings": "dist/index.d.ts",
